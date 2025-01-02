@@ -1,3 +1,55 @@
+# Fork difference
+
+Installation
+
+```
+docker run -ti --rm -v ${PWD}:/share node:21-alpine3.19 sh
+yarn
+yarn build
+
+cp main.js styles.css ~/Documents/Obsidian/.obsidian/plugins/obsidian-tasks-plugin
+```
+
+Changed addDatesSuggestions
+
+```
+const genericSuggestions = [
+    'today',
+    'tomorrow',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'next week',
+    'next month',
+    'next year',
+];
+```
+
+to
+
+```
+const genericSuggestions = [
+    'today',
+    'tomorrow',
+    'in two days',
+    'in three days',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'next week',
+    'next month',
+    'next year',
+];
+```
+
+---
+
 <h1 align="center">Obsidian Tasks</h1>
 
 <p align="center">Task management for the <a href="https://obsidian.md/">Obsidian</a> knowledge base.</p>

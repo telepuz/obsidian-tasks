@@ -287,7 +287,8 @@ function addDatesSuggestions(
     const genericSuggestions = [
         'today',
         'tomorrow',
-        'Sunday',
+        'in two days',
+        'in three days',
         'Monday',
         'Tuesday',
         'Wednesday',
