@@ -50,6 +50,7 @@ Work through all the tasks below, until zero tasks remain in this query:
 > not done
 > path includes Smoke Testing the Tasks Plugin
 > description includes **check**:
+> sort by function task.lineNumber
 >
 > short display
 > ```
@@ -149,15 +150,15 @@ heading includes Rendering of Task Blocks
 
 - View this file in **Reading mode**...
 - On the task line above:
-  - [ ] #task **left**-click on a date value, and use the date picker to select and save a different date. Check that the date is updated.
-  - [ ] #task **left**-click on a date value, and click outside the date picker, to confirm that the picker closes.
-  - [ ] #task **right**-click on a date value, and use the context menu to select and save a different date. Check that the date is updated.
-  - [ ] #task **right**-click on a date value, and click outside the context menu, to confirm that the menu closes.
+  - [ ] #task **left**-click on a date value (above), and use the date picker to select and save a different date. Check that the date is updated.
+  - [ ] #task **left**-click on a date value (above), and click outside the date picker, to confirm that the picker closes.
+  - [ ] #task **right**-click on a date value (above), and use the context menu to select and save a different date. Check that the date is updated.
+  - [ ] #task **right**-click on a date value (above), and click outside the context menu, to confirm that the menu closes.
 - In the tasks search block below:
-  - [ ] #task **left**-click on a date value, and use the date picker to select and save a different date. Check that the date is updated.
-  - [ ] #task **left**-click on a date value, and click outside the date picker, to confirm that the picker closes.
-  - [ ] #task **right**-click on a date value, and use the context menu to select and save a different date. Check that the date is updated.
-  - [ ] #task **right**-click on a date value, and click outside the context menu, to confirm that the menu closes.
+  - [ ] #task **left**-click on a date value (below), and use the date picker to select and save a different date. Check that the date is updated.
+  - [ ] #task **left**-click on a date value (below), and click outside the date picker, to confirm that the picker closes.
+  - [ ] #task **right**-click on a date value (below), and use the context menu to select and save a different date. Check that the date is updated.
+  - [ ] #task **right**-click on a date value (below), and click outside the context menu, to confirm that the menu closes.
 - [ ] #task **check**: Checked all above steps for **editing dates** worked
 
 ```tasks
@@ -184,6 +185,25 @@ hide postpone button
     9. **Check** that values you entered in the modal have been copied in to the list item above
     10. **Check** that the `#task` tag has been added to the start of the task
 - [ ] #task **check**: Checked all above steps for **creating a task via the modal** worked
+
+---
+
+### Toggling non-task checkboxes
+
+- Non-task checkbox are tasks without the global filter, treated as `ListItems` by the obsidian-tasks plugin
+- [ ] #task Check or uncheck non-task list items with checkbox in the query below this task
+  - [ ] I will have an `x` status
+  - [x] I will have a `space` status
+  - [/] Me too with a `space` status
+
+```tasks
+filename includes {{query.file.filename}}
+heading includes Toggling non-task checkboxes
+description does not include **check**:
+show tree
+```
+
+- [ ] #task **check**: Checked all above steps for **toggling non-task list items with checkbox in a query** worked
 
 ---
 

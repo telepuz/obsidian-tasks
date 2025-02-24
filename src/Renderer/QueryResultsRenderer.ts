@@ -6,6 +6,7 @@ import type { IQuery } from '../IQuery';
 import { QueryLayout } from '../Layout/QueryLayout';
 import { TaskLayout } from '../Layout/TaskLayout';
 import { PerformanceTracker } from '../lib/PerformanceTracker';
+import { replaceTaskWithTasks } from '../Obsidian/File';
 import { explainResults, getQueryForQueryRenderer } from '../Query/QueryRendererHelper';
 import { State } from '../Obsidian/Cache';
 import type { GroupDisplayHeading } from '../Query/Group/GroupDisplayHeading';
@@ -17,8 +18,8 @@ import { Task } from '../Task/Task';
 import { PostponeMenu } from '../ui/Menus/PostponeMenu';
 import { TaskLineRenderer, type TextRenderer, createAndAppendElement } from './TaskLineRenderer';
 
-type BacklinksEventHandler = (ev: MouseEvent, task: Task) => Promise<void>;
-type EditButtonClickHandler = (event: MouseEvent, task: Task, allTasks: Task[]) => void;
+export type BacklinksEventHandler = (ev: MouseEvent, task: Task) => Promise<void>;
+export type EditButtonClickHandler = (event: MouseEvent, task: Task, allTasks: Task[]) => void;
 
 export interface QueryRendererParameters {
     allTasks: Task[];
@@ -42,7 +43,9 @@ export class QueryResultsRenderer {
     public readonly source: string;
 
     // The path of the file that contains the instruction block, and cached data from that file.
-    public readonly tasksFile: TasksFile;
+    // This can be updated when the query file's frontmatter is modified.
+    // It is up to the caller to determine when to do this though.
+    private _tasksFile: TasksFile;
 
     public query: IQuery;
     protected queryType: string; // whilst there is only one query type, there is no point logging this value
@@ -62,7 +65,7 @@ export class QueryResultsRenderer {
         textRenderer: TextRenderer = TaskLineRenderer.obsidianMarkdownRenderer,
     ) {
         this.source = source;
-        this.tasksFile = tasksFile;
+        this._tasksFile = tasksFile;
         this.renderMarkdown = renderMarkdown;
         this.obsidianComponent = obsidianComponent;
         this.textRenderer = textRenderer;
@@ -72,15 +75,32 @@ export class QueryResultsRenderer {
         // added later.
         switch (className) {
             case 'block-language-tasks':
-                this.query = getQueryForQueryRenderer(this.source, GlobalQuery.getInstance(), this.tasksFile);
+                this.query = this.makeQueryFromSourceAndTasksFile();
                 this.queryType = 'tasks';
                 break;
 
             default:
-                this.query = getQueryForQueryRenderer(this.source, GlobalQuery.getInstance(), this.tasksFile);
+                this.query = this.makeQueryFromSourceAndTasksFile();
                 this.queryType = 'tasks';
                 break;
         }
+    }
+
+    private makeQueryFromSourceAndTasksFile() {
+        return getQueryForQueryRenderer(this.source, GlobalQuery.getInstance(), this.tasksFile);
+    }
+
+    public get tasksFile(): TasksFile {
+        return this._tasksFile;
+    }
+
+    /**
+     * Reload the query with new file information, such as to update query placeholders.
+     * @param newFile
+     */
+    public setTasksFile(newFile: TasksFile) {
+        this._tasksFile = newFile;
+        this.query = this.makeQueryFromSourceAndTasksFile();
     }
 
     public get filePath(): string | undefined {
@@ -320,11 +340,42 @@ export class QueryResultsRenderer {
             return await this.addTask(taskList, taskLineRenderer, listItem, taskIndex, queryRendererParameters);
         }
 
-        return await this.addListItem(taskList, listItem);
+        return await this.addListItem(taskList, listItem, taskIndex);
     }
 
-    private async addListItem(taskList: HTMLUListElement, listItem: ListItem) {
+    private async addListItem(taskList: HTMLUListElement, listItem: ListItem, listItemIndex: number) {
         const li = createAndAppendElement('li', taskList);
+
+        if (listItem.statusCharacter) {
+            const checkbox = createAndAppendElement('input', li);
+            checkbox.classList.add('task-list-item-checkbox');
+            checkbox.type = 'checkbox';
+
+            checkbox.addEventListener('click', (event: MouseEvent) => {
+                event.preventDefault();
+                // It is required to stop propagation so that obsidian won't write the file with the
+                // checkbox (un)checked. Obsidian would write after us and overwrite our change.
+                event.stopPropagation();
+
+                // Should be re-rendered as enabled after update in file.
+                checkbox.disabled = true;
+
+                const checkedOrUncheckedListItem = listItem.checkOrUncheck();
+                replaceTaskWithTasks({ originalTask: listItem, newTasks: checkedOrUncheckedListItem });
+            });
+
+            if (listItem.statusCharacter !== ' ') {
+                checkbox.checked = true;
+                li.classList.add('is-checked');
+            }
+
+            li.classList.add('task-list-item');
+
+            // Set these to be compatible with stock obsidian lists:
+            li.setAttribute('data-task', listItem.statusCharacter.trim());
+            // Trim to ensure empty attribute for space. Same way as obsidian.
+            li.setAttribute('data-line', listItemIndex.toString());
+        }
 
         const span = createAndAppendElement('span', li);
         await this.textRenderer(
@@ -333,6 +384,15 @@ export class QueryResultsRenderer {
             listItem.findClosestParentTask()?.path ?? '',
             this.obsidianComponent,
         );
+
+        // Unwrap the p-tag that was created by the MarkdownRenderer:
+        const pElement = span.querySelector('p');
+        if (pElement !== null) {
+            while (pElement.firstChild) {
+                span.insertBefore(pElement.firstChild, pElement);
+            }
+            pElement.remove();
+        }
 
         return li;
     }
