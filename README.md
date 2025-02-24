@@ -7,7 +7,7 @@ docker run -ti --rm -v ${PWD}:/share node:21-alpine3.19 sh
 yarn
 yarn build
 
-cp main.js styles.css ~/Documents/Obsidian/.obsidian/plugins/obsidian-tasks-plugin
+cp main.js styles.css manifest.json ~/Documents/Obsidian/.obsidian/plugins/obsidian-tasks-plugin
 ```
 
 Changed addDatesSuggestions
