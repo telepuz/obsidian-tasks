@@ -3,7 +3,7 @@
 Installation
 
 ```
-docker run -ti --rm -v ${PWD}:/share node:21-alpine3.19 sh
+docker run -ti --rm -v ${PWD}:/share node:22-alpine3.19 sh
 yarn
 yarn build
 
