@@ -16,6 +16,7 @@ import { GlobalFilter } from '../Config/GlobalFilter';
 import { TaskRegularExpressions } from '../Task/TaskRegularExpressions';
 import { searchForCandidateTasksForDependency } from '../ui/DependencyHelpers';
 import { escapeRegExp } from '../lib/RegExpTools';
+import { StatusType } from '../Statuses/StatusConfiguration';
 import type { SuggestInfo, SuggestionBuilder } from '.';
 
 /**
@@ -772,6 +773,7 @@ function editorIsRequestingSuggest(
 /**
  * Return true if:
  * - line is a task line, that is, it is a list item with a checkbox.
+ * - the checkbox status character is not a NON_TASK type.
  * - the cursor is in a task line's description.
  *
  * Here, description includes any task signifiers, as well as the vanilla description.
@@ -786,6 +788,11 @@ function cursorIsInTaskLineDescription(line: string, cursorPosition: number) {
     const components = Task.extractTaskComponents(line);
     if (!components) {
         // It is not a task line, that is, it is not a list item with a checkbox:
+        return false;
+    }
+
+    if (components.status.type === StatusType.NON_TASK) {
+        // The user's settings say this status is not a task:
         return false;
     }
 
