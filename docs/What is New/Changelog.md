@@ -12,8 +12,16 @@ _In recent [Tasks releases](https://github.com/obsidian-tasks-group/obsidian-tas
 
 ## 7.x releases
 
+- 7.20.0:
+  - Add [[Presets]] feature to save commonly used task query instructions.
+  - Document [[Missing tags, aliases and cssclasses in some Obsidian 1.9.x versions]] - for Insider users of Obsidian 1.9.x.
+  - [[Line Continuations]] can now be used in the [[Query File Defaults]] property `TQ_extra_instructions`.
+  - [[Check your Statuses]] report now contains samples of each status, and a convenient search to test them.
+  - Add German translation of [[Settings]], [[Editing a Status]] and [[Check your Statuses]].
 - 7.19.0:
   - New setting to [[Recurring Tasks#Remove scheduled date on recurrence|remove scheduled date on recurrence]].
+- 7.17.0:
+  - Add Belarusian, Russian, and Ukrainian translations of [[Settings]], [[Editing a Status]] and [[Check your Statuses]].
 - 7.16.0:
   - Add `task.lineNumber`.
     - This enables `sort by function task.lineNumber` to override the [[Sorting#Default sort order|default sort order]].

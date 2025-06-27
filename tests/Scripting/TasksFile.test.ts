@@ -20,6 +20,8 @@ import yaml_all_property_types_empty from '../Obsidian/__test_data__/yaml_all_pr
 import yaml_all_property_types_populated from '../Obsidian/__test_data__/yaml_all_property_types_populated.json';
 import yaml_1_alias from '../Obsidian/__test_data__/yaml_1_alias.json';
 import yaml_2_aliases from '../Obsidian/__test_data__/yaml_2_aliases.json';
+import links_everywhere from '../Obsidian/__test_data__/links_everywhere.json';
+import link_in_yaml from '../Obsidian/__test_data__/link_in_yaml.json';
 import { determineExpressionType, formatToRepresentType } from './ScriptingTestHelpers';
 
 describe('TasksFile', () => {
@@ -170,12 +172,29 @@ describe('TasksFile - reading frontmatter', () => {
 
     it('should read JSON frontmatter', () => {
         const tasksFile = getTasksFileFromMockData(jason_properties);
-        expect(tasksFile.frontmatter.tags).toEqual(['#journal']);
+        // Obsidian 1.9.x change in behaviour: See #3482
+        // The tags line in frontmatter is:
+        //        "tags": "journal",
+        // Obsidian 1.8.10 and earlier read this as an array:
+        //      ["#journal"]
+        // Obsidian 1.9.0 to 1.9.2 reads this as an empty array:
+        //      []
+        expect(tasksFile.frontmatter.tags).toEqual([]);
         expect(tasksFile.frontmatter.publish).toEqual(false);
     });
 
     it('should read yaml_complex_example', () => {
         const tasksFile = getTasksFileFromMockData(yaml_complex_example);
+        // Obsidian 1.9.x change in behaviour: See #3482
+        // The tags line in frontmatter is:
+        //      TAG:
+        //          - value1
+        //          - value2
+        // Obsidian 1.8.10 and earlier read tags as an array:
+        //      ["#value1", "#value2"]
+        // Obsidian 1.9.0 to 1.9.2 reads tags as an empty array:
+        //      []
+
         verifyAsJson(tasksFile.frontmatter);
     });
 
@@ -214,6 +233,19 @@ describe('TasksFile - reading frontmatter', () => {
               "tags => string[] = ['#sample/tag/value']",
             ]
         `);
+    });
+});
+
+describe('TasksFile - accessing links', () => {
+    it('should return all links in the file body', () => {
+        const tasksFile = getTasksFileFromMockData(links_everywhere);
+        expect(tasksFile.outLinks.length).toEqual(3);
+        expect(tasksFile.outLinks[0].originalMarkdown).toEqual('[[link_in_file_body]]');
+    });
+
+    it('should return no yaml links', () => {
+        const tasksFile = getTasksFileFromMockData(link_in_yaml);
+        expect(tasksFile.outLinks.length).toEqual(0);
     });
 });
 

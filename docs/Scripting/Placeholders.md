@@ -75,6 +75,16 @@ Explanation of this Tasks code block query:
 
 It is now possible to use properties in the query file. See [[Obsidian Properties#Using Query Properties in Searches]]
 
+## Using preset.xxx
+
+You can do the following:
+
+```text
+{{preset.my_snippet_from_settings}}
+```
+
+See also [[Presets]].
+
 ## Error checking: invalid variables
 
 If there are any unknown properties in the placeholders, a clear message is written.

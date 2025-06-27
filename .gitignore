@@ -4,6 +4,7 @@
 
 # npm
 node_modules
+.yarn
 yarn-error.log
 
 # build
@@ -45,6 +46,7 @@ yarn-error.log
 # files in local vaults
 **/workspace
 **/workspace.json
+**/workspace-mobile.json
 
 # Backup files.
 *.bak

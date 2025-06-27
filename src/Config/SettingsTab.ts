@@ -6,14 +6,22 @@ import { Status } from '../Statuses/Status';
 import type { StatusCollection } from '../Statuses/StatusCollection';
 import { createStatusRegistryReport } from '../Statuses/StatusRegistryReport';
 import { i18n } from '../i18n/i18n';
+import type { TasksEvents } from '../Obsidian/TasksEvents';
 import * as Themes from './Themes';
-import { type HeadingState, TASK_FORMATS } from './Settings';
-import { getSettings, isFeatureEnabled, updateGeneralSetting, updateSettings } from './Settings';
+import {
+    type HeadingState,
+    TASK_FORMATS,
+    getSettings,
+    isFeatureEnabled,
+    updateGeneralSetting,
+    updateSettings,
+} from './Settings';
 import { GlobalFilter } from './GlobalFilter';
 import { StatusSettings } from './StatusSettings';
 
 import { CustomStatusModal } from './CustomStatusModal';
 import { GlobalQuery } from './GlobalQuery';
+import { PresetsSettingsUI } from './PresetsSettingsUI';
 
 export class SettingsTab extends PluginSettingTab {
     // If the UI needs a more complex setting you can create a
@@ -25,11 +33,13 @@ export class SettingsTab extends PluginSettingTab {
     };
 
     private readonly plugin: TasksPlugin;
+    private readonly presetsSettingsUI;
 
-    constructor({ plugin }: { plugin: TasksPlugin }) {
+    constructor({ plugin, events }: { plugin: TasksPlugin; events: TasksEvents }) {
         super(plugin.app, plugin);
 
         this.plugin = plugin;
+        this.presetsSettingsUI = new PresetsSettingsUI(plugin, events);
     }
 
     private static createFragmentWithHTML = (html: string) =>
@@ -145,6 +155,27 @@ export class SettingsTab extends PluginSettingTab {
                         });
                 }),
         );
+
+        // ---------------------------------------------------------------------------
+        new Setting(containerEl)
+            .setName(i18n.t('settings.presets.name'))
+            .setHeading()
+            .setDesc(
+                SettingsTab.createFragmentWithHTML(
+                    '<p>' +
+                        i18n.t('settings.presets.line1', {
+                            name: '<code>name</code>',
+                            instruction1: '<code>preset name</code>',
+                            instruction2: '<code>{{preset.name}}</code>',
+                        }) +
+                        '</p><p>' +
+                        i18n.t('settings.presets.line2') +
+                        '</p>' +
+                        this.seeTheDocumentation('https://publish.obsidian.md/tasks/Queries/Presets'),
+                ),
+            );
+        // ---------------------------------------------------------------------------
+        this.presetsSettingsUI.renderPresetsSettings(containerEl);
 
         // ---------------------------------------------------------------------------
         new Setting(containerEl).setName(i18n.t('settings.statuses.heading')).setHeading();
@@ -608,7 +639,6 @@ export class SettingsTab extends PluginSettingTab {
                 .filter((folder) => folder !== '')
         );
     }
-
     private static renderFolderArray(folders: string[]): string {
         return folders.join(',');
     }

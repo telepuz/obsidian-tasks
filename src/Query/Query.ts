@@ -8,13 +8,14 @@ import { expandPlaceholders } from '../Scripting/ExpandPlaceholders';
 import { makeQueryContext } from '../Scripting/QueryContext';
 import type { Task } from '../Task/Task';
 import type { OptionalTasksFile } from '../Scripting/TasksFile';
+import { unknownPresetErrorMessage } from './Presets/Presets';
 import { Explainer } from './Explain/Explainer';
 import type { Filter } from './Filter/Filter';
 import * as FilterParser from './FilterParser';
 import type { Grouper } from './Group/Grouper';
 import { TaskGroups } from './Group/TaskGroups';
 import { QueryResult } from './QueryResult';
-import { continueLines } from './Scanner';
+import { continueLines, splitSourceHonouringLineContinuations } from './Scanner';
 import { SearchInfo } from './SearchInfo';
 import { Sort } from './Sort/Sort';
 import type { Sorter } from './Sort/Sorter';
@@ -58,6 +59,7 @@ export class Query implements IQuery {
     private readonly limitRegexp = /^limit (groups )?(to )?(\d+)( tasks?)?/i;
 
     private readonly commentRegexp = /^#.*/;
+    private readonly presetRegexp = /^preset +(.*)/i;
 
     constructor(source: string, tasksFile: OptionalTasksFile = undefined) {
         this._queryId = this.generateQueryId(10);
@@ -117,6 +119,9 @@ export class Query implements IQuery {
     private parseLine(statement: Statement) {
         const line = statement.anyPlaceholdersExpanded;
         switch (true) {
+            case this.presetRegexp.test(line):
+                this.parsePreset(line, statement);
+                break;
             case this.shortModeRegexp.test(line):
                 this._queryLayoutOptions.shortMode = true;
                 this.saveLayoutStatement(statement);
@@ -172,13 +177,35 @@ ${source}`;
             }
         }
 
-        // TODO Do not complain about any placeholder errors in comment lines
+        const isAComment = this.commentRegexp.test(source);
+        if (isAComment) {
+            // If it's a comment, we return the line un-changed, to avoid:
+            // 1. pointless error messages for any harmless unknown placeholders,
+            // 2. accidentally processing the second-and-subsequent lines of multi-line placeholders.
+            return [statement];
+        }
+
         // TODO Give user error info if they try and put a string in a regex search
         let expandedSource: string = source;
         if (tasksFile) {
             const queryContext = makeQueryContext(tasksFile);
+            let previousExpandedSource: string = '';
             try {
-                expandedSource = expandPlaceholders(source, queryContext);
+                // Keep expanding placeholders until no more changes occur or max iterations reached.
+                const maxIterations = 10; // Prevent infinite loops if there are any circular references.
+                let iterations = 0;
+
+                while (expandedSource !== previousExpandedSource && iterations < maxIterations) {
+                    previousExpandedSource = expandedSource;
+                    expandedSource = expandPlaceholders(previousExpandedSource, queryContext);
+                    iterations++;
+                }
+
+                if (expandedSource !== source) {
+                    expandedSource = continueLines(expandedSource)
+                        .map((statement) => statement.anyContinuationLinesRemoved)
+                        .join('\n');
+                }
             } catch (error) {
                 if (error instanceof Error) {
                     this._error = error.message;
@@ -441,6 +468,35 @@ ${statement.explainStatement('    ')}
             return true;
         }
         return false;
+    }
+
+    private parsePreset(line: string, statement: Statement) {
+        const preset = this.presetRegexp.exec(line);
+        if (preset) {
+            const presetName = preset[1].trim();
+            const { presets } = getSettings();
+            const presetValue = presets[presetName];
+            if (!presetValue) {
+                this.setError(unknownPresetErrorMessage(presetName, presets), statement);
+                return;
+            }
+
+            // Process the preset text with placeholder expansion
+            const instructions = splitSourceHonouringLineContinuations(presetValue);
+            for (const instruction of instructions) {
+                const newStatement = new Statement(statement.rawInstruction, statement.anyContinuationLinesRemoved);
+                newStatement.recordExpandedPlaceholders(instruction);
+
+                // Apply placeholder expansion again if needed
+                if (instruction.includes('{{') && instruction.includes('}}') && this.tasksFile) {
+                    const queryContext = makeQueryContext(this.tasksFile);
+                    const expandedInstruction = expandPlaceholders(instruction, queryContext);
+                    newStatement.recordExpandedPlaceholders(expandedInstruction);
+                }
+
+                this.parseLine(newStatement);
+            }
+        }
     }
 
     /**
