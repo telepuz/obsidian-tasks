@@ -28,6 +28,7 @@ import inheritance_task_listitem_task from './__test_data__/inheritance_task_lis
 import inheritance_task_mixed_children from './__test_data__/inheritance_task_mixed_children.json';
 import numbered_list_items_with_paren from './__test_data__/numbered_list_items_with_paren.json';
 import numbered_list_items_standard from './__test_data__/numbered_list_items_standard.json';
+import numbered_tasks_issue_3481 from './__test_data__/numbered_tasks_issue_3481.json';
 import one_task from './__test_data__/one_task.json';
 import callouts_nested_issue_2890_labelled from './__test_data__/callouts_nested_issue_2890_labelled.json';
 import callout from './__test_data__/callout.json';
@@ -175,6 +176,48 @@ describe('cache', () => {
             "
         `);
         expect(tasks.length).toEqual(2);
+    });
+
+    it('visualise how Tasks handles sample tasks in issue #3481', () => {
+        // This test name does not yet begin 'should', because it is only documenting/visualsing
+        // the current behaviour - and not stating that the current behaviour is correct.
+
+        // See https://github.com/obsidian-tasks-group/obsidian-tasks/issues/3481
+        //      "Tasks query turns single-line tasks into multi-line tasks"
+        const data = numbered_tasks_issue_3481;
+        const tasks = readTasksFromSimulatedFile(data);
+        expect(data.fileContents).toMatchInlineSnapshot(`
+            "# numbered_tasks_issue_3481
+
+            See https://github.com/obsidian-tasks-group/obsidian-tasks/issues/3481.
+
+            - [ ] 1. #task Task 1 in 'numbered_tasks_issue_3481'
+            - [ ] 2 #task Task 2 in 'numbered_tasks_issue_3481'
+            - [ ] 3) #task Task 3 in 'numbered_tasks_issue_3481'
+            - [ ] 4 - #task Task 4 in 'numbered_tasks_issue_3481'
+            - [ ] 5: #task Task 5 in 'numbered_tasks_issue_3481'
+            - [ ] (6) #task Task 6 in 'numbered_tasks_issue_3481'
+
+            The file [[numbered_tasks_issue_3481_searches]] shows how Obsidian and some plugins parse the above data.
+            "
+        `);
+
+        // This shows the current behaviour of the Tasks code for processing Obsidian listItems.
+        // The two nested ListItem lines are not expected.
+        // But reviewing the listItems values in numbered_tasks_issue_3481.json, it is plausible
+        // to see why Tasks might have created them.
+        expect(printRoots(tasks)).toMatchInlineSnapshot(`
+            "- [ ] 1. #task Task 1 in 'numbered_tasks_issue_3481' : Task
+                - [ ] 1. #task Task 1 in 'numbered_tasks_issue_3481' : ListItem
+            - [ ] 2 #task Task 2 in 'numbered_tasks_issue_3481' : Task
+            - [ ] 3) #task Task 3 in 'numbered_tasks_issue_3481' : Task
+                - [ ] 3) #task Task 3 in 'numbered_tasks_issue_3481' : ListItem
+            - [ ] 4 - #task Task 4 in 'numbered_tasks_issue_3481' : Task
+            - [ ] 5: #task Task 5 in 'numbered_tasks_issue_3481' : Task
+            - [ ] (6) #task Task 6 in 'numbered_tasks_issue_3481' : Task
+            "
+        `);
+        expect(tasks.length).toEqual(6);
     });
 
     it('should read one parent and one child task', () => {
@@ -712,39 +755,28 @@ describe('accessing links in file', function () {
 
         const cachedMetadata: CachedMetadata = task.file.cachedMetadata;
 
-        /**
-         * I am thinking of the following, to evantually make links accessible to users.
-         * 1. Provide a class or interface called Link, with fields:
-         *      - displayText, e.g. "link_in_yaml"
-         *      - link, e.g. "link_in_yaml"
-         *      - original, e.g. "[[link_in_yaml]]"
-         * 2. Add some getters that construct the relevant Link objects from cached metadata on demand, such as:
-         *      - task.file.linksInBody
-         *      - task.file.linksInFrontMatter
-         *      - task.file.allLinks
-         *      - task.links
-         * 3. Consider the vocabulary - some dataview users talk about inlines and outlinks.
-         *    The above are all outlinks - but do we want to name them as such, to prepare
-         *    for if or when inlinks are also supported?
-         */
+        // Usability note:
+        //    These tests are for visualising how Obsidian caches link properties.
+        //    See TasksFile and ListItem classes for accessing links via the Link class in Tasks cvode
 
         it('see source', () => {
             expect(data.fileContents).toMatchInlineSnapshot(`
-                            "---
-                            link-in-frontmatter: "[[link_in_yaml]]"
-                            ---
-                            # links_everywhere
+                "---
+                link-in-frontmatter: "[[link_in_yaml]]"
+                link-in-frontmatter-to-heading: "[[#A link in a link_in_heading]]"
+                ---
+                # links_everywhere
 
-                            A link in the file body: [[link_in_file_body]]
+                A link in the file body: [[link_in_file_body]]
 
-                            ## A link in a [[link_in_heading]]
+                ## A link in a [[link_in_heading]]
 
-                            - [ ] #task Task in 'links_everywhere' - a link on the task: [[link_in_task_wikilink]]
-                            "
-                    `);
+                - [ ] #task Task in 'links_everywhere' - a link on the task: [[link_in_task_wikilink]]
+                "
+            `);
         });
 
-        it('should access links in frontmatter', () => {
+        it('visualise raw links in frontmatter', () => {
             const frontMatterLinks = cachedMetadata['frontmatterLinks'];
             expect(frontMatterLinks).toBeDefined();
 
@@ -760,7 +792,7 @@ describe('accessing links in file', function () {
                     `);
         });
 
-        it('should access links in file body', () => {
+        it('visualise raw links in file body', () => {
             const fileBodyLinks = cachedMetadata.links;
 
             const originalLinkText = fileBodyLinks?.map((link) => link.original).join('\n');
@@ -772,27 +804,27 @@ describe('accessing links in file', function () {
 
             const firstFileBodyLink = fileBodyLinks![0];
             expect(firstFileBodyLink).toMatchInlineSnapshot(`
-                            {
-                              "displayText": "link_in_file_body",
-                              "link": "link_in_file_body",
-                              "original": "[[link_in_file_body]]",
-                              "position": {
-                                "end": {
-                                  "col": 46,
-                                  "line": 5,
-                                  "offset": 114,
-                                },
-                                "start": {
-                                  "col": 25,
-                                  "line": 5,
-                                  "offset": 93,
-                                },
-                              },
-                            }
-                    `);
+                {
+                  "displayText": "link_in_file_body",
+                  "link": "link_in_file_body",
+                  "original": "[[link_in_file_body]]",
+                  "position": {
+                    "end": {
+                      "col": 46,
+                      "line": 6,
+                      "offset": 181,
+                    },
+                    "start": {
+                      "col": 25,
+                      "line": 6,
+                      "offset": 160,
+                    },
+                  },
+                }
+            `);
         });
 
-        it('should access links in task line', () => {
+        it('visualise raw links in task line', () => {
             const fileBodyLinks = cachedMetadata.links;
             const linksOnTask = fileBodyLinks?.filter((link) => link.position.start.line === task.lineNumber);
 
@@ -809,13 +841,13 @@ describe('accessing links in file', function () {
                   "position": {
                     "end": {
                       "col": 86,
-                      "line": 9,
-                      "offset": 238,
+                      "line": 10,
+                      "offset": 305,
                     },
                     "start": {
                       "col": 61,
-                      "line": 9,
-                      "offset": 213,
+                      "line": 10,
+                      "offset": 280,
                     },
                   },
                 }
@@ -852,6 +884,7 @@ describe('all mock files', () => {
             const files_without_tasks = [
                 'Test Data/docs_sample_for_explain_query_file_defaults.md',
                 'Test Data/non_tasks.md',
+                'Test Data/numbered_tasks_issue_3481_searches.md',
             ];
             if (files_without_tasks.includes(path)) {
                 expect(tasks.length).toEqual(0);
