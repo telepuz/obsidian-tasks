@@ -1,4 +1,5 @@
-import type { App, CachedMetadata } from 'obsidian';
+import type { App, CachedMetadata, Reference } from 'obsidian';
+import type { SimulatedFile } from '../Obsidian/SimulatedFile';
 
 export {};
 
@@ -133,8 +134,14 @@ function caseInsensitiveSubstringSearch(searchTerm: string, phrase: string): Sea
 
 let mockedFileData: any = {};
 
-export function setCurrentCacheFile(mockData: any) {
+export function setCurrentCacheFile(mockData: SimulatedFile) {
     mockedFileData = mockData;
+}
+
+function reportInconsistentTestData(functionName: string) {
+    throw new Error(
+        `Inconsistent test data used in mock ${functionName}(). Check setCurrentCacheFile() has been called with the correct {@link SimulatedFile} data.`,
+    );
 }
 
 /**
@@ -146,9 +153,7 @@ export function setCurrentCacheFile(mockData: any) {
  */
 export function getAllTags(cachedMetadata: CachedMetadata): string[] {
     if (cachedMetadata !== mockedFileData.cachedMetadata) {
-        throw new Error(
-            'Inconsistent test data used in mock getAllTags(). Check setCurrentCacheFile() has been called with the correct {@link SimulatedFile} data.',
-        );
+        reportInconsistentTestData('getAllTags');
     }
     return mockedFileData.getAllTags;
 }
@@ -162,11 +167,42 @@ export function getAllTags(cachedMetadata: CachedMetadata): string[] {
  */
 export function parseFrontMatterTags(frontmatter: any | null): string[] | null {
     if (frontmatter !== mockedFileData.cachedMetadata.frontmatter) {
-        throw new Error(
-            'Inconsistent test data used in mock parseFrontMatterTags(). Check setCurrentCacheFile() has been called with the correct {@link SimulatedFile} data.',
-        );
+        reportInconsistentTestData('parseFrontMatterTags');
     }
     return mockedFileData.parseFrontMatterTags;
+}
+
+/**
+ * Fake implementation of calling Obsidian's `getLinkpath()` and `app.metadataCache.getFirstLinkpathDest()`
+ * This reads saved the {@link SimulatedFile} JSON files.
+ *
+ * See https://docs.obsidian.md/Reference/TypeScript+API/getLinkpath
+ * See https://docs.obsidian.md/Reference/TypeScript+API/MetadataCache/getFirstLinkpathDest
+ *
+ * @param rawLink
+ * @param sourcePath
+ *
+ * @example
+ * ```typescript
+ *     beforeAll(() => {
+ *         LinkResolver.getInstance().setGetFirstLinkpathDestFn((rawLink: Reference, sourcePath: string) => {
+ *             return getFirstLinkpathDest(rawLink, sourcePath);
+ *         });
+ *     });
+ * ```
+ */
+export function getFirstLinkpathDest(rawLink: Reference, sourcePath: string): string | null {
+    if (mockedFileData.filePath !== sourcePath) {
+        reportInconsistentTestData('getFirstLinkpathDest');
+    }
+    return getFirstLinkpathDestFromData(mockedFileData, rawLink);
+}
+
+export function getFirstLinkpathDestFromData(data: any, rawLink: Reference) {
+    if (!(rawLink.link in data.resolveLinkToPath)) {
+        console.log(`Cannot find resolved path for ${rawLink.link} in ${data.filePath} in mock getFirstLinkpathDest()`);
+    }
+    return data.resolveLinkToPath[rawLink.link];
 }
 
 /**
@@ -185,3 +221,18 @@ export function prepareSimpleSearch(query: string): (text: string) => SearchResu
 
 type IconName = string;
 export function setIcon(_parent: HTMLElement, _iconId: IconName): void {}
+
+/**
+ * A mock implementation of the Obsidian Modal class.
+ * Without this testing the TaskModal throws an error attempting to extend Modal
+ */
+export class Modal {
+    public open(): void {
+        // Mocked interface, no-op
+    }
+    public close(): void {
+        // Mocked interface, no-op
+    }
+    public onOpen(): void {}
+    public onClose(): void {}
+}
