@@ -21,7 +21,7 @@ import { TasksFile } from '../Scripting/TasksFile';
 import { DateFallback } from '../DateTime/DateFallback';
 import type { Task } from '../Task/Task';
 import { type BacklinksEventHandler, type EditButtonClickHandler, QueryResultsRenderer } from './QueryResultsRenderer';
-import { createAndAppendElement } from './TaskLineRenderer';
+import { TaskLineRenderer, createAndAppendElement } from './TaskLineRenderer';
 
 type RenderParams = { tasks: Task[]; state: State };
 
@@ -129,6 +129,14 @@ class QueryRenderChild extends MarkdownRenderChild {
             MarkdownRenderer.render,
             this,
             this.app,
+            TaskLineRenderer.obsidianMarkdownRenderer,
+            {
+                allTasks: () => this.plugin.getTasks(),
+                allMarkdownFiles: () => this.app.vault.getMarkdownFiles(),
+                backlinksClickHandler: createBacklinksClickHandler(this.app),
+                backlinksMousedownHandler: createBacklinksMousedownHandler(this.app),
+                editTaskPencilClickHandler: createEditTaskPencilClickHandler(this.app),
+            },
         );
 
         this.queryResultsRenderer.query.debug('[render] QueryRenderChild.constructor() entered');
@@ -317,13 +325,7 @@ class QueryRenderChild extends MarkdownRenderChild {
 
     private async renderResults(state: State, tasks: Task[]) {
         const content = createAndAppendElement('div', this.containerEl);
-        await this.queryResultsRenderer.render(state, tasks, content, {
-            allTasks: this.plugin.getTasks(),
-            allMarkdownFiles: this.app.vault.getMarkdownFiles(),
-            backlinksClickHandler: createBacklinksClickHandler(this.app),
-            backlinksMousedownHandler: createBacklinksMousedownHandler(this.app),
-            editTaskPencilClickHandler: createEditTaskPencilClickHandler(this.app),
-        });
+        await this.queryResultsRenderer.render(state, tasks, content);
 
         this.containerEl.firstChild?.replaceWith(content);
     }
@@ -381,11 +383,11 @@ function createBacklinksMousedownHandler(app: App): BacklinksEventHandler {
         // (for regular left-click we prefer the 'click' event, and not to just do everything here, because
         // the 'click' event is more generic for touch devices etc.)
         if (ev.button === 1) {
+            ev.preventDefault();
             const result = await getTaskLineAndFile(task, app.vault);
             if (result) {
                 const [line, file] = result;
                 const leaf = app.workspace.getLeaf('tab');
-                ev.preventDefault();
                 await leaf.openFile(file, { eState: { line: line } });
             }
         }
